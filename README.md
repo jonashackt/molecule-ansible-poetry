@@ -181,3 +181,24 @@ Package operations: 10 installs, 0 updates, 0 removals
 
 Writing lock file
 ```
+
+
+## Create Ansible collection with Molecule and Poetry
+
+See https://ansible.readthedocs.io/projects/molecule/getting-started/
+
+But running `ansible` or other commands doesn't seem to work right now. Why is that?
+
+In order to be able to use the installed packages, we need to spin up a Python virtual environment. That's handled by Poetry for us and we only need to run:
+
+```
+poetry shell
+```
+
+Now our executable should be available. Just try to run `ansible` or `ansible-galaxy`. They should work now as expected!
+
+We have everything to create our first Ansible Collection:
+
+```
+ansible-galaxy collection init jonashackt.moleculetest
+```
