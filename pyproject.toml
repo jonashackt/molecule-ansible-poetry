@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "molecule-ansible-poetry"
 version = "0.1.0"
-description = ""
+description = "Example project showing Ansible collections, Molecule delegated tests and Poetry as dependency management"
 authors = ["Jonas Hecht <jonas.hecht@codecentric.de>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
+ansible-core = "^2.15.5"
 molecule = "^6.0.2"
-molecule-plugins = {extras = ["docker"], version = "^23.5.0"}
 
 
 [build-system]
