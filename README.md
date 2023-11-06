@@ -170,8 +170,6 @@ $ poetry add "molecule-plugins[docker]"
 
 ## Create Ansible collection & role via ansible-galaxy
 
-See https://ansible.readthedocs.io/projects/molecule/getting-started/
-
 But running `ansible` or other commands doesn't seem to work right now. Why is that?
 
 In order to be able to use the installed packages, we need to spin up a Python virtual environment. That's handled by Poetry for us and we only need to run:
@@ -182,15 +180,44 @@ poetry shell
 
 Now our executable should be available. Just try to run `ansible` or `ansible-galaxy`. They should work now as expected!
 
-We have everything to create our first Ansible collection:
+The [crucial point here](https://ansible.readthedocs.io/projects/molecule/getting-started/) is this:
 
+> One of the recommended ways to create a collection is to place it under a `collections/ansible_collections` directory. If you don't put your collection into a directory named `ansible_collections`, molecule won't be able to find your role.
+
+If we don't create the directory accordingly, we'll run into errors like this later:
+
+```shell
+TASK [Testing role install_python_pip] *****************************************
+ERROR! the role 'jonashackt.moleculetest.install_python_pip' was not found in /home/jonashackt/dev/molecule-ansible-poetry/jonashackt/moleculetest/extensions/molecule/default/roles:/home/jonashackt/dev/molecule-ansible-poetry/jonashackt/moleculetest/extensions/roles:/home/jonashackt/dev/molecule-ansible-poetry/jonashackt/moleculetest/extensions/molecule/default
+
+The error appears to be in '/home/jonashackt/dev/molecule-ansible-poetry/jonashackt/moleculetest/extensions/molecule/default/converge.yml': line 10, column 15, but may
+be elsewhere in the file depending on the exact syntax problem.
+
+The offending line appears to be:
+
+      ansible.builtin.include_role:
+        name: jonashackt.moleculetest.install_python_pip
+              ^ here
+
+PLAY RECAP *********************************************************************
 ```
-ansible-galaxy collection init jonashackt.moleculetest
+
+So __BEFORE__ proceeding any further, we need to create a directory `collections/ansible_collections` ([`mkdir -p` will help to create the subdirectory from one command](https://stackoverflow.com/a/1731775/4964553)):
+
+```shell
+$ mkdir -p collections/ansible_collections
+```
+
+We have everything to create our first Ansible collection via `ansible-galaxy collection init my.collection.name`. Just be sure to `cd` into the `collections/ansible_collections` dir before:
+
+```shell
+$ cd collections/ansible_collections
+$ ansible-galaxy collection init jonashackt.moleculetest
 ```
 
 After this we can cd into `roles` dir of our newly created collection and create a new Ansible role inside via `ansible-galaxy role init`
 
-```
+```shell
 $ cd jonashackt/moleculetest/roles
 $ ansible-galaxy role init install_python_pip
 ```
@@ -198,27 +225,7 @@ $ ansible-galaxy role init install_python_pip
 
 ## Add Molecule to the collection
 
-Before we add Molecule to the game, we need to create a `playbooks` directory in the root of our new collection:
-
-```shell
-$ mkdir playbooks && cd playbooks
-```
-
-Now create a new playbook inside the directory - e.g. `test_playbook.yml` with the following contents:
-
-```yaml
----
-- name: Test new role from within this playbook
-  hosts: localhost
-  gather_facts: false
-  tasks:
-    - name: Testing role
-      ansible.builtin.include_role:
-        name: jonashackt.moleculetest.install_python_pip
-        tasks_from: main.yml
-```
-
-Having this playbook in place we can now finally add Molecule to the game.
+Now we can finally add Molecule to the game.
 
 Therefore create a new directory `extensions` in the root of the collection:
 
@@ -261,8 +268,27 @@ INFO     Initialized scenario in /home/jonashackt/dev/molecule-ansible-poetry/jo
 
 Another way of thinking about the created playbooks `create.yml`, `converge.yml`, `molecule.yml` & `destroy.yml` is to use the analogy of the BDD-style inspired way of structuring tests using `Given`, `When`, `Then`. See also this blog post for more info https://www.codecentric.de/wissens-hub/blog/test-driven-infrastructure-ansible-molecule 
 
-Now we are already able to run a full Molecule test cycle via the following command:
+In order to tell Molecule that it should execute and test our previously generated role, we need to change the [converge.yml](jonashackt/moleculetest/extensions/molecule/default/converge.yml):
+
+```yaml
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Testing role install_python_pip
+      ansible.builtin.include_role:
+        name: jonashackt.moleculetest.install_python_pip
+        tasks_from: main.yml
+```
+
+Now we are already able to run a full Molecule test cycle via `molecule test`:
+
+> It can be particularly useful to pass the `--destroy=never` flag when invoking molecule test so that you can tell Molecule to run the full sequence but not destroy the instance if one step fails.
 
 ```shell
 $ molecule test
 ```
+
+
+

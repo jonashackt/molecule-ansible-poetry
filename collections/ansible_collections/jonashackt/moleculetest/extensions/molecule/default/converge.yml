@@ -1,9 +1,9 @@
 ---
-- name: Test new role from within this playbook
-  hosts: localhost
+- name: Converge
+  hosts: all
   gather_facts: false
   tasks:
-    - name: Testing role
+    - name: Testing role install_python_pip
       ansible.builtin.include_role:
         name: jonashackt.moleculetest.install_python_pip
         tasks_from: main.yml
