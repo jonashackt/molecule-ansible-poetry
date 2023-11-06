@@ -168,7 +168,7 @@ $ poetry add "molecule-plugins[docker]"
 ```
 
 
-## Create Ansible collection via ansible-galaxy
+## Create Ansible collection & role via ansible-galaxy
 
 See https://ansible.readthedocs.io/projects/molecule/getting-started/
 
@@ -193,4 +193,76 @@ After this we can cd into `roles` dir of our newly created collection and create
 ```
 $ cd jonashackt/moleculetest/roles
 $ ansible-galaxy role init install_python_pip
+```
+
+
+## Add Molecule to the collection
+
+Before we add Molecule to the game, we need to create a `playbooks` directory in the root of our new collection:
+
+```shell
+$ mkdir playbooks && cd playbooks
+```
+
+Now create a new playbook inside the directory - e.g. `test_playbook.yml` with the following contents:
+
+```yaml
+---
+- name: Test new role from within this playbook
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Testing role
+      ansible.builtin.include_role:
+        name: jonashackt.moleculetest.install_python_pip
+        tasks_from: main.yml
+```
+
+Having this playbook in place we can now finally add Molecule to the game.
+
+Therefore create a new directory `extensions` in the root of the collection:
+
+```shell
+$ mkdir extensions && cd extensions
+```
+
+Inside the `extensions` directory we can now create our Molecule scenario using `molecule init scenario`:
+
+```shell
+$ molecule init scenario
+INFO     Initializing new scenario default...
+
+PLAY [Create a new molecule scenario] ******************************************
+
+TASK [Check if destination folder exists] **************************************
+changed: [localhost]
+
+TASK [Check if destination folder is empty] ************************************
+ok: [localhost]
+
+TASK [Fail if destination folder is not empty] *********************************
+skipping: [localhost]
+
+TASK [Expand templates] ********************************************************
+changed: [localhost] => (item=molecule/default/create.yml)
+changed: [localhost] => (item=molecule/default/converge.yml)
+changed: [localhost] => (item=molecule/default/destroy.yml)
+changed: [localhost] => (item=molecule/default/molecule.yml)
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=3    changed=2    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0
+
+INFO     Initialized scenario in /home/jonashackt/dev/molecule-ansible-poetry/jonashackt/moleculetest/extensions/molecule/default successfully.
+```
+
+[The docs](https://ansible.readthedocs.io/projects/molecule/getting-started/#molecule-scenarios) have a great starting point what Molecule scenarios are:
+
+> Scenarios are the starting point for a lot of powerful functionality that Molecule offers. For now, we can think of a scenario as a test suite for roles or playbooks within a collection. You can have as many scenarios as you like and Molecule will run one after the other.
+
+Another way of thinking about the created playbooks `create.yml`, `converge.yml`, `molecule.yml` & `destroy.yml` is to use the analogy of the BDD-style inspired way of structuring tests using `Given`, `When`, `Then`. See also this blog post for more info https://www.codecentric.de/wissens-hub/blog/test-driven-infrastructure-ansible-molecule 
+
+Now we are already able to run a full Molecule test cycle via the following command:
+
+```shell
+$ molecule test
 ```
