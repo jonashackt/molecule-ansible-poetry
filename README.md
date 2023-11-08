@@ -676,11 +676,11 @@ jobs:
       run: |
         docker info
         pipx install poetry
+        poetry install
 
     - name: Molecule testing GHA-locally with Docker
       run: |
-        poetry shell
-        molecule test
+        poetry run molecule test
 ```
 
 
