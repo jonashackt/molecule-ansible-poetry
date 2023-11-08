@@ -223,7 +223,7 @@ $ ansible-galaxy role init install_python_pip
 ```
 
 
-## Add Molecule to the collection
+## Add Molecule to the collection & run first test cycle
 
 Now we can finally add Molecule to the game.
 
@@ -290,5 +290,231 @@ Now we are already able to run a full Molecule test cycle via `molecule test`:
 $ molecule test
 ```
 
+
+## Create local Molecule instance with Delegated driver & the community.docker collection
+
+A great idea is to leverage containers for Molecule tests. In contrast to earlier Molecule versions, [Delegated is the default driver](https://ansible.readthedocs.io/projects/molecule/configuration/#driver) and it's the developers responsibility to implement it:
+
+> Under this driver, it is the developers responsibility to implement the create and destroy playbooks.
+
+To use Docker as a test instance in Molecule, we need to create a `requirements.yml` to hold the [community.docker](https://docs.ansible.com/ansible/latest/collections/community/docker/index.html) collection:
+
+```yaml
+collections:
+  - community.docker
+```
+
+In order to have Molecule/Ansible recognize this dependency, we need to define it inside our [molecule.yml](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/molecule.yml):
+
+```yaml
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+platforms:
+  - name: molecule-ubuntu
+    image: ubuntu:23.04
+```
+
+Also we defined a Docker image to use inside the `platforms` section.
+
+Now heading over to our [create.yml](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/create.yml) can create a Docker container instance (see also https://ansible.readthedocs.io/projects/molecule/docker/):
+
+```yaml
+---
+- name: Create
+  hosts: localhost
+  gather_facts: false
+  vars:
+    molecule_inventory:
+      all:
+        hosts: {}
+        molecule: {}
+  tasks:
+    - name: Create a container
+      community.docker.docker_container:
+        name: "{{ item.name }}"
+        image: "{{ item.image }}"
+        state: started
+        command: sleep 1d
+        log_driver: json-file
+      register: container_result
+      loop: "{{ molecule_yml.platforms }}"
+
+    - name: Print some info
+      ansible.builtin.debug:
+        msg: "{{ container_result.results }}"
+
+    - name: Add container to molecule_inventory
+      vars:
+        inventory_partial_yaml: |
+          all:
+            children:
+              molecule:
+                hosts:
+                  "{{ item.name }}":
+                    ansible_connection: community.docker.docker
+      ansible.builtin.set_fact:
+        molecule_inventory: >
+          {{ molecule_inventory | combine(inventory_partial_yaml | from_yaml, recursive=true) }}
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        label: "{{ item.name }}" # display the container name only https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_loops.html#limiting-loop-output-with-label
+
+    - name: Dump molecule_inventory
+      ansible.builtin.copy:
+        content: |
+          {{ molecule_inventory | to_yaml }}
+        dest: "{{ molecule_ephemeral_directory }}/inventory/molecule_inventory.yml"
+        mode: "0600"
+
+    - name: Refresh inventory to ensure new instances exist in inventory
+      ansible.builtin.meta: refresh_inventory
+
+    - name: Fail if molecule group is missing
+      ansible.builtin.assert:
+        that: "'molecule' in groups"
+        fail_msg: |
+          molecule group was not found inside inventory groups: {{ groups }}
+      run_once: true # noqa: run-once[task]
+
+# we want to avoid errors like "Failed to create temporary directory"
+- name: Validate that inventory was refreshed
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Check uname
+      ansible.builtin.raw: uname -a
+      register: check_uname_result
+      changed_when: false
+
+    - name: Display uname info
+      ansible.builtin.debug:
+        msg: "{{ check_uname_result.stdout }}"
+```
+
+We can try to create our first Molecule instance via:
+
+```shell
+molecule create
+```
+
+If you get the following error:
+
+```shell
+TASK [Create a container] ******************************************************
+An exception occurred during task execution. To see the full traceback, use -vvv. The error was: ModuleNotFoundError: No module named 'requests'
+failed: [localhost] (item={'image': 'ubuntu:23.04', 'name': 'molecule-ubuntu'}) => {"ansible_loop_var": "item", "changed": false, "item": {"image": "ubuntu:23.04", "name": "molecule-ubuntu"}, "msg": "Failed to import the required Python library (requests) on pikelinux's Python /home/jonashackt/.cache/pypoetry/virtualenvs/molecule-ansible-poetry-MP2KKXLA-py3.11/bin/python. Please read the module documentation and install it in the appropriate location. If the required library is installed, but Ansible is using the wrong Python interpreter, please consult the documentation on ansible_python_interpreter"}
+```
+
+we need to add the Python package `requests` to our [pyproject.toml](pyproject.toml) via `poetry add requests`.
+
+If everything went fine, we should have a container running:
+
+```shell
+molecule create
+WARNING  The scenario config file ('/home/jonashackt/dev/molecule-ansible-poetry/collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/molecule.yml') has been modified since the scenario was created. If recent changes are important, reset the scenario with 'molecule destroy' to clean up created items or 'molecule reset' to clear current configuration.
+INFO     default scenario test matrix: dependency, create, prepare
+INFO     Performing prerun with role_name_check=0...
+INFO     Running default > dependency
+Starting galaxy collection install process
+Nothing to do. All requested collections are already installed. If you want to reinstall them, consider using `--force`.
+INFO     Dependency completed successfully.
+WARNING  Skipping, missing the requirements file.
+INFO     Running default > create
+
+PLAY [Create] ******************************************************************
+
+TASK [Create a container] ******************************************************
+changed: [localhost] => (item={'image': 'ubuntu:23.04', 'name': 'molecule-ubuntu'})
+
+TASK [Print some info] *********************************************************
+ok: [localhost] => {
+    "msg": [
+        {
+            "ansible_loop_var": "item",
+            "changed": true,
+            "container": {
+                "AppArmorProfile": "docker-default",
+                "Args": [
+                    "1d"
+                ],
+                "Config": {
+                    ...
+                    "Image": "ubuntu:23.04",
+                    "Labels": {
+                        "org.opencontainers.image.ref.name": "ubuntu",
+                        "org.opencontainers.image.version": "23.04"
+
+                ...
+
+TASK [Add container to molecule_inventory] *************************************
+ok: [localhost] => (item=molecule-ubuntu)
+
+TASK [Dump molecule_inventory] *************************************************
+[WARNING]: Skipping unexpected key (molecule) in group (all), only "vars",
+"children" and "hosts" are valid
+changed: [localhost]
+
+TASK [Refresh inventory to ensure new instances exist in inventory] ************
+
+TASK [Fail if molecule group is missing] ***************************************
+ok: [localhost] => {
+    "changed": false,
+    "msg": "All assertions passed"
+}
+
+PLAY [Validate that inventory was refreshed] ***********************************
+
+TASK [Check uname] *************************************************************
+ok: [molecule-ubuntu]
+
+TASK [Display uname info] ******************************************************
+ok: [molecule-ubuntu] => {
+    "msg": "Linux d0baf85f8169 6.5.9-1-MANJARO #1 SMP PREEMPT_DYNAMIC Wed Oct 25 13:14:27 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux\n"
+}
+
+PLAY RECAP *********************************************************************
+localhost                  : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+molecule-ubuntu            : ok=2    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+INFO     Running default > prepare
+WARNING  Skipping, prepare playbook not configured.
+```
+
+You may have a look with `docker ps`, if the container is really running:
+
+```shell
+$ docker ps          
+CONTAINER ID   IMAGE                  COMMAND                  CREATED         STATUS         PORTS                       NAMES
+8768bfa8b2c8   ubuntu:23.04           "sleep 1d"               3 seconds ago   Up 2 seconds                               molecule-ubuntu
+```
+
+We also need to implement our [destroy.yml](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/destroy.yml):
+
+```yaml
+- name: Destroy molecule containers
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Stop and remove container
+      delegate_to: localhost
+      community.docker.docker_container:
+        name: "{{ inventory_hostname }}"
+        state: absent
+        auto_remove: true
+
+- name: Remove dynamic molecule inventory
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove dynamic inventory file
+      ansible.builtin.file:
+        path: "{{ molecule_ephemeral_directory }}/inventory/molecule_inventory.yml"
+        state: absent
+```
+
+Running `molecule destroy` our Docker container should be removed. You can double check, if it got destroyed via `docker ps`.
 
 
