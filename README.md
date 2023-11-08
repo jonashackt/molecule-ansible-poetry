@@ -679,7 +679,7 @@ jobs:
 
     - name: Molecule testing GHA-locally with Docker
       run: |
-        pipenv shell
+        poetry shell
         molecule test
 ```
 
