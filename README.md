@@ -558,10 +558,13 @@ As we only have some debug printing inside our Ansible role under test right now
 # tasks file for install_python_pip
 - name: In order to get Ansible working, we need to install Python first (the snake bites itself)
   ansible.builtin.raw: apt update && apt install python3 -y
+  register: install_python
+  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 - name: Check Python was installed successfully
   ansible.builtin.raw: python3 --version
   register: python_result
+  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 - name: Print Python version installed
   ansible.builtin.debug:
@@ -575,6 +578,8 @@ As we only have some debug printing inside our Ansible role under test right now
 ```
 
 As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to.
+
+We also need to take the `idempotence` check into account using `changed_when: install_python.stdout is search("The following NEW packages will be installed:")`, otherwise `molecule test` will fail. See also https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 
 ## Verify if our Ansible role is working using Testinfra

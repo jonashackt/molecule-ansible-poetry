@@ -2,10 +2,13 @@
 # tasks file for install_python_pip
 - name: In order to get Ansible working, we need to install Python first (the snake bites itself)
   ansible.builtin.raw: apt update && apt install python3 -y
+  register: install_python
+  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 - name: Check Python was installed successfully
   ansible.builtin.raw: python3 --version
   register: python_result
+  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 - name: Print Python version installed
   ansible.builtin.debug:
