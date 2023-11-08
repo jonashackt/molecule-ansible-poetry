@@ -681,6 +681,7 @@ jobs:
     - name: Molecule testing GHA-locally with Docker
       run: |
         poetry run molecule test
+      working-directory: ./collections/ansible_collections/jonashackt/moleculetest/extensions
 ```
 
 
