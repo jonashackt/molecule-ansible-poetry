@@ -56,7 +56,7 @@
       run_once: true # noqa: run-once[task]
 
 # we want to avoid errors like "Failed to create temporary directory"
-- name: Validate that inventory was refreshed
+- name: Validate that inventory was refreshed & we're inside our container
   hosts: molecule
   gather_facts: false
   tasks:

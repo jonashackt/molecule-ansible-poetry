@@ -1,5 +1,18 @@
 ---
 # tasks file for install_python_pip
-- name: Let's install the Python package manager pip
+- name: In order to get Ansible working, we need to install Python first (the snake bites itself)
+  ansible.builtin.raw: apt update && apt install python3 -y
+
+- name: Check Python was installed successfully
+  ansible.builtin.raw: python3 --version
+  register: python_result
+
+- name: Print Python version installed
   ansible.builtin.debug:
-    msg: "Install install install..."
+    msg: "{{ python_result.stdout }}"
+
+- name: Let's install the Python package manager pip
+  ansible.builtin.apt:
+    pkg:
+      - python3-pip
+    update_cache: yes

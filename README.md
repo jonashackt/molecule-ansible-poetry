@@ -291,7 +291,7 @@ $ molecule test
 ```
 
 
-## Create local Molecule instance with Delegated driver & the community.docker collection
+## Create local Molecule instance using Docker (via Delegated)
 
 A great idea is to leverage containers for Molecule tests. In contrast to earlier Molecule versions, [Delegated is the default driver](https://ansible.readthedocs.io/projects/molecule/configuration/#driver) and it's the developers responsibility to implement it:
 
@@ -518,3 +518,58 @@ We also need to implement our [destroy.yml](collections/ansible_collections/jona
 Running `molecule destroy` our Docker container should be removed. You can double check, if it got destroyed via `docker ps`.
 
 
+## Run Molecule converge to our Docker container test instance
+
+First we should enhance our [converge.yml](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/converge.yml) as it is stated in https://ansible.readthedocs.io/projects/molecule/docker/#converge-playbook to fail if molecule group is missing.
+
+```yaml
+---
+- name: Fail if molecule group is missing
+  hosts: localhost
+  tasks:
+    - name: Print some info
+      ansible.builtin.debug:
+        msg: "{{ groups }}"
+
+    - name: Assert group existence
+      ansible.builtin.assert:
+        that: "'molecule' in groups"
+        fail_msg: |
+          molecule group was not found inside inventory groups: {{ groups }}
+
+- name: Converge
+  hosts: molecule
+  gather_facts: false
+  tasks:
+    - name: Testing role install_python_pip
+      ansible.builtin.include_role:
+        name: jonashackt.moleculetest.install_python_pip
+        tasks_from: main.yml
+```
+
+Also our `Converge` playbook should point to the `molecule` host, which represents our Docker container.
+
+As we only have some debug printing inside our Ansible role under test right now, we should also enhance it inside [roles/install_python_pip/tasks/main.yml](collections/ansible_collections/jonashackt/moleculetest/roles/install_python_pip/tasks/main.yml):
+
+```yaml
+---
+# tasks file for install_python_pip
+- name: In order to get Ansible working, we need to install Python first (the snake bites itself)
+  ansible.builtin.raw: apt update && apt install python3 -y
+
+- name: Check Python was installed successfully
+  ansible.builtin.raw: python3 --version
+  register: python_result
+
+- name: Print Python version installed
+  ansible.builtin.debug:
+    msg: "{{ python_result.stdout }}"
+
+- name: Let's install the Python package manager pip
+  ansible.builtin.apt:
+    pkg:
+      - python3-pip
+    update_cache: yes
+```
+
+As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to.
