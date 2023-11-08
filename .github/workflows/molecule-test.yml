@@ -1,0 +1,32 @@
+name: molecule-test
+
+on: [push]
+
+jobs:
+  run-molecule:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4.1.1
+
+    - name: Cache Poetry virtualenvs incl. all pip packages (see https://python-poetry.org/docs/configuration/#listing-the-current-configuration)
+      uses: actions/cache@v3.3.2
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+
+    - uses: actions/setup-python@v4.7.1
+      with:
+        python-version: '3.11'
+
+    - name: Install required dependencies with Poetry
+      run: |
+        docker info
+        pipx install poetry
+
+    - name: Molecule testing GHA-locally with Docker
+      run: |
+        pipenv shell
+        molecule test

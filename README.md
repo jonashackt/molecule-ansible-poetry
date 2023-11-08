@@ -1,4 +1,6 @@
 # molecule-ansible-poetry
+[![Build Status](https://github.com/jonashackt/molecule-ansible-poetry/workflows/molecule-test/badge.svg)](https://github.com/jonashackt/molecule-ansible-poetry/actions)
+
 Example project showing Ansible collections, Molecule delegated tests and Poetry as dependency management
 
 
@@ -65,7 +67,7 @@ Also tab completion could be added to your terminal: https://python-poetry.org/d
 
 
 
-# Create a Ansible Collection, Role and Playbook via Poetry and Molecule
+# Create an Ansible Collection, Role and Playbook via Poetry and Molecule
 
 ## Initialize Poetry: create a pyproject.toml
 
@@ -575,7 +577,7 @@ As we only have some debug printing inside our Ansible role under test right now
 As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to.
 
 
-## Verify if our Ansible role worked using Testinfra
+## Verify if our Ansible role is working using Testinfra
 
 As with the default driver, [the default verifier for Molecule is not also Ansible](https://ansible.readthedocs.io/projects/molecule/configuration/#advanced-testing). But as I know Testinfra, I wanted to have a look, if I can use it with Molecule v6 as expected.
 
@@ -640,3 +642,45 @@ collecting ... collected 1 item
 ============================== 1 passed in 0.57s ===============================
 INFO     Verifier completed successfully.
 ```
+
+
+## Add GitHub Actions workflow
+
+Let's create a simple GitHub Actions workflow [.github/workflows/molecule-test.yml](.github/workflows/molecule-test.yml):
+
+```yaml
+name: molecule-test
+
+on: [push]
+
+jobs:
+  run-molecule:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4.1.1
+
+    - name: Cache Poetry virtualenvs incl. all pip packages (see https://python-poetry.org/docs/configuration/#listing-the-current-configuration)
+      uses: actions/cache@v3.3.2
+      with:
+        path: ~/.cache/pypoetry/virtualenvs
+        key: ${{ runner.os }}-poetry-${{ hashFiles('**/Pipfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-poetry-
+
+    - uses: actions/setup-python@v4.7.1
+      with:
+        python-version: '3.11'
+
+    - name: Install required dependencies with Poetry
+      run: |
+        docker info
+        pipx install poetry
+
+    - name: Molecule testing GHA-locally with Docker
+      run: |
+        pipenv shell
+        molecule test
+```
+
+
