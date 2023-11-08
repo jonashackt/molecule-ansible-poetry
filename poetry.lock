@@ -359,6 +359,17 @@ files = [
 ]
 
 [[package]]
+name = "iniconfig"
+version = "2.0.0"
+description = "brain-dead simple config-ini parsing"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
+    {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+]
+
+[[package]]
 name = "jinja2"
 version = "3.1.2"
 description = "A very fast and expressive template engine."
@@ -594,6 +605,46 @@ files = [
 
 [package.extras]
 plugins = ["importlib-metadata"]
+
+[[package]]
+name = "pytest"
+version = "7.4.3"
+description = "pytest: simple powerful testing with Python"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pytest-7.4.3-py3-none-any.whl", hash = "sha256:0d009c083ea859a71b76adf7c1d502e4bc170b80a8ef002da5806527b9591fac"},
+    {file = "pytest-7.4.3.tar.gz", hash = "sha256:d989d136982de4e3b29dabcc838ad581c64e8ed52c11fbe86ddebd9da0818cd5"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "sys_platform == \"win32\""}
+iniconfig = "*"
+packaging = "*"
+pluggy = ">=0.12,<2.0"
+
+[package.extras]
+testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
+
+[[package]]
+name = "pytest-testinfra"
+version = "9.0.0"
+description = "Test infrastructures"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "pytest-testinfra-9.0.0.tar.gz", hash = "sha256:5311b369e0546920fce464c3bf945b55ebe75a127568f6d615e94b8891340149"},
+    {file = "pytest_testinfra-9.0.0-py3-none-any.whl", hash = "sha256:2cb0fab78c17ed68edc3c812ef68905e19665060f94ce0f1601f5cd0ea4d258c"},
+]
+
+[package.dependencies]
+pytest = "!=3.0.2"
+
+[package.extras]
+ansible = ["ansible"]
+paramiko = ["paramiko"]
+salt = ["salt"]
+winrm = ["pywinrm"]
 
 [[package]]
 name = "pyyaml"
@@ -848,6 +899,26 @@ files = [
 test = ["enrich (>=1.2.6)", "molecule (>=3.4.0)", "pytest (>=6.2.5)", "pytest-cov (>=2.12.1)", "pytest-plus (>=0.2)", "pytest-xdist (>=2.3.0)"]
 
 [[package]]
+name = "testinfra"
+version = "6.0.0"
+description = "Test infrastructures"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "testinfra-6.0.0-py3-none-any.whl", hash = "sha256:1a75b5025dbe82ffedec50afeaf9a7f96a8cd1e294f0d40de3a089a369ceae0e"},
+    {file = "testinfra-6.0.0.tar.gz", hash = "sha256:4225d36e4bb02eb1618429325280c4b62a18cea8a90c91564ee0cc1d31ca331a"},
+]
+
+[package.dependencies]
+pytest-testinfra = "*"
+
+[package.extras]
+ansible = ["pytest-testinfra[ansible]"]
+paramiko = ["pytest-testinfra[paramiko]"]
+salt = ["pytest-testinfra[salt]"]
+winrm = ["pytest-testinfra[pywinrm]"]
+
+[[package]]
 name = "urllib3"
 version = "2.0.7"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
@@ -881,4 +952,4 @@ bracex = ">=2.1.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "4a6aabb9a865059dd1f84aad7c463fac2b7b23ad406c6e2f55bc2acf3703e3bb"
+content-hash = "d7def3ae3a300d03e88246041f8266fc8fb86db9225ac5e655b2b016d37688b6"

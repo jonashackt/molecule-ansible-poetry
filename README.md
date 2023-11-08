@@ -573,3 +573,70 @@ As we only have some debug printing inside our Ansible role under test right now
 ```
 
 As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to.
+
+
+## Verify if our Ansible role worked using Testinfra
+
+As with the default driver, [the default verifier for Molecule is not also Ansible](https://ansible.readthedocs.io/projects/molecule/configuration/#advanced-testing). But as I know Testinfra, I wanted to have a look, if I can use it with Molecule v6 as expected.
+
+Testinfra is based on pytest and is also referred to in the docs: https://ansible.readthedocs.io/projects/molecule/configuration/#testinfra
+
+In order to be able to use testinfra, we need to install it into our Python environment via `poetry add testinfra`.
+
+Now let's configure testinfra inside our [molecule.yml](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/molecule.yml):
+
+```yaml
+...
+verifier:
+  name: testinfra
+  directory: ../tests/
+  env:
+    # get rid of the DeprecationWarning messages of third-party libs,
+    # see https://docs.pytest.org/en/latest/warnings.html#deprecationwarning-and-pendingdeprecationwarning
+    PYTHONWARNINGS: "ignore:.*U.*mode is deprecated:DeprecationWarning"
+  options:
+    # show which tests where executed in test output
+    v: 1
+```
+
+Also we need to add a new directory `tests` in our `extensions/molecule` directory and create a file [test_pip.py](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/tests/test_pip.py):
+
+```python
+import os
+
+import testinfra.utils.ansible_runner
+
+testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
+    os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')
+
+
+def test_is_pip_installed(host):
+    package_pip = host.package('python3-pip')
+
+    assert package_pip.is_installed
+```
+
+Here we levarage the power of testinfra using the class [`testinfra.utils.ansible_runner.AnsibleRunner`](https://github.com/pytest-dev/pytest-testinfra/blob/main/testinfra/utils/ansible_runner.py) and can simply check via `host.package().is_installed`, if our package `python3-pip` has been installed.
+
+Let's run our testinfra tests using Molecule via `molecule verify`:
+
+```shell
+molecule verify                                                                        1 ✘  molecule-ansible-poetry-MP2KKXLA-py3.11  
+WARNING  The scenario config file ('/home/jonashackt/dev/molecule-ansible-poetry/collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/molecule.yml') has been modified since the scenario was created. If recent changes are important, reset the scenario with 'molecule destroy' to clean up created items or 'molecule reset' to clear current configuration.
+INFO     default scenario test matrix: verify
+INFO     Performing prerun with role_name_check=0...
+INFO     Running default > verify
+INFO     Executing Testinfra tests found in /home/jonashackt/dev/molecule-ansible-poetry/collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/../tests//...
+/home/jonashackt/.cache/pypoetry/virtualenvs/molecule-ansible-poetry-MP2KKXLA-py3.11/lib/python3.11/site-packages/_testinfra_renamed.py:5: DeprecationWarning: testinfra package has been renamed to pytest-testinfra. Please `pip install pytest-testinfra` and `pip uninstall testinfra` and update your package requirements to avoid this message
+  warnings.warn((
+============================= test session starts ==============================
+platform linux -- Python 3.11.5, pytest-7.4.3, pluggy-1.3.0 -- /home/jonashackt/.cache/pypoetry/virtualenvs/molecule-ansible-poetry-MP2KKXLA-py3.11/bin/python
+rootdir: /home/jonashackt
+plugins: testinfra-9.0.0, testinfra-6.0.0
+collecting ... collected 1 item
+
+../tests/test_pip.py::test_is_pip_installed[ansible:/molecule-ubuntu] PASSED [100%]
+
+============================== 1 passed in 0.57s ===============================
+INFO     Verifier completed successfully.
+```
