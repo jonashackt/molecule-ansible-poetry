@@ -1,5 +1,7 @@
 # molecule-ansible-poetry
 [![Build Status](https://github.com/jonashackt/molecule-ansible-poetry/workflows/molecule-test/badge.svg)](https://github.com/jonashackt/molecule-ansible-poetry/actions)
+[![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/molecule-ansible-poetry/blob/master/LICENSE)
+[![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
 Example project showing Ansible collections, Molecule delegated tests and Poetry as dependency management
 
