@@ -1,12 +1,11 @@
 ---
-dependency:
-  name: galaxy
-  options:
-    requirements-file: requirements.yml
+driver:
+  name: docker
 
 platforms:
-  - name: delegated-docker-ubuntu
+  - name: docker-ubuntu
     image: ubuntu:23.04
+    pre_build_image: false
 
 verifier:
   name: testinfra

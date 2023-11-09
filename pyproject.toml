@@ -6,11 +6,12 @@ authors = ["Jonas Hecht <jonas.hecht@codecentric.de>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-ansible-core = "^2.15.5"
-molecule = "^6.0.2"
-requests = "^2.31.0"
-testinfra = "^6.0.0"
+python = "3.11.5"
+ansible-core = "2.16.0"
+molecule = "6.0.2"
+requests = "2.31.0"
+testinfra = "6.0.0"
+molecule-plugins = {version = "23.5.0", extras = ["docker"]}
 
 
 [build-system]

@@ -279,11 +279,9 @@ In order to tell Molecule that it should execute and test our previously generat
 - name: Converge
   hosts: all
   gather_facts: false
-  tasks:
-    - name: Testing role install_python_pip
-      ansible.builtin.include_role:
-        name: jonashackt.moleculetest.install_python_pip
-        tasks_from: main.yml
+  become: false
+  roles:
+    - role: jonashackt.moleculetest.install_python_pip
 ```
 
 Now we are already able to run a full Molecule test cycle via `molecule test`:
@@ -544,34 +542,20 @@ First we should enhance our [converge.yml](collections/ansible_collections/jonas
 - name: Converge
   hosts: molecule
   gather_facts: false
-  tasks:
-    - name: Testing role install_python_pip
-      ansible.builtin.include_role:
-        name: jonashackt.moleculetest.install_python_pip
-        tasks_from: main.yml
+  become: false
+  roles:
+    - role: jonashackt.moleculetest.install_python_pip
 ```
 
 Also our `Converge` playbook should point to the `molecule` host, which represents our Docker container.
+
+
 
 As we only have some debug printing inside our Ansible role under test right now, we should also enhance it inside [roles/install_python_pip/tasks/main.yml](collections/ansible_collections/jonashackt/moleculetest/roles/install_python_pip/tasks/main.yml):
 
 ```yaml
 ---
 # tasks file for install_python_pip
-- name: In order to get Ansible working, we need to install Python first (the snake bites itself)
-  ansible.builtin.raw: apt update && apt install python3 -y
-  register: install_python
-  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
-
-- name: Check Python was installed successfully
-  ansible.builtin.raw: python3 --version
-  register: python_result
-  changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
-
-- name: Print Python version installed
-  ansible.builtin.debug:
-    msg: "{{ python_result.stdout }}"
-
 - name: Let's install the Python package manager pip
   ansible.builtin.apt:
     pkg:
@@ -579,9 +563,26 @@ As we only have some debug printing inside our Ansible role under test right now
     update_cache: yes
 ```
 
-As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to.
+As we use a "naked" base image like ubuntu, we don't have python installed. So we need to install it before we can actually use our Ansible modules like `ansible.builtin.apt` as we're used to. Therefore we can leverage a new file [`prepare.yml`](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/default/prepare.yml):
 
-We also need to take the `idempotence` check into account using `changed_when: install_python.stdout is search("The following NEW packages will be installed:")`, otherwise `molecule test` will fail. See also https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
+```yaml
+---
+- name: Prepare
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: In order to get Ansible working, we need to install Python first (the snake bites itself)
+      ansible.builtin.raw: apt update && apt install python3 -y
+      register: install_python
+      changed_when: install_python.stdout is search("The following NEW packages will be installed:") # implemeted for idempotence tests, see https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
+
+    - name: Make sure python3 is installed
+      ansible.builtin.package:
+        name: python3
+        state: present
+```
+
+We also need to take the `idempotence` check into account using `changed_when: install_python.stdout is search("The following NEW packages will be installed:")`, otherwise `molecule test` will fail. See https://datamattsson.tumblr.com/post/186523898221/idempotence-and-changedwhen-with-ansible
 
 
 ## Verify if our Ansible role is working using Testinfra
@@ -656,8 +657,6 @@ INFO     Verifier completed successfully.
 Let's create a simple GitHub Actions workflow [.github/workflows/molecule-test.yml](.github/workflows/molecule-test.yml):
 
 ```yaml
-name: molecule-test
-
 on: [push]
 
 jobs:
@@ -692,3 +691,107 @@ jobs:
 ```
 
 
+# Using Molecule Plugins
+
+Earlier version of Molecule featured more sophisticated Drivers than just Delegated, where the Molecule user needs to implement the `create.yml` and `destroy.yml` for themselves. Although Delegated is the default Ansible Driver, there are still so called Molecule plugins https://github.com/ansible-community/molecule-plugins that feature more high level Drivers like Docker, EC2, Vagrant, GCE, Azure etc.
+
+But be beware that this is an Ansible Community project, so the community is expected to maintain the drivers. The docs tell us in "Molecule Plugins in 2023" about the movement of maintained drivers to the new GitHub repo (and the archiving of the unmaintained ones): https://ansible.readthedocs.io/projects/devtools/stats/molecule-plugins/
+
+
+## Using the docker Driver from the Molecule Plugins
+
+In order to see the differences, let's have a look into the Docker driver. [The docs state](https://github.com/ansible-community/molecule-plugins):
+
+> Installing molecule-plugins does not install dependencies specific to each, plugin. To install these you need to install the extras for each plugin, like pip3 install 'molecule-plugins[docker]'.
+
+> Before installing these plugins be sure that you uninstall their old standalone packages, like pip3 uninstall molecule-azure. If you fail to do so, you will end-up with a broken setup, as multiple plugins will have the same entry points, registered.
+
+Using Poetry we can install the new Molecule Docker driver using:
+
+```shell
+poetry add 'molecule-plugins[docker]==23.5.0'
+```
+
+As you can see we can also install Poetry packages [with pinned exact versions](https://nadeauinnovations.com/post/2023/01/pinning-package-versions-with-poetry-a-short-guide-to-optimizing-python-development-and-projects/).
+
+To have a look onto all installed versions, just run `poetry show`.
+
+Now we should be able to init our new Molecule scenario using `molecult init --scenario-name`:
+
+```shell
+molecule init scenario --driver-name docker docker-ubuntu
+```
+
+Besides the `molecule.yml` inside the new directory `docker-ubuntu` also other already known files are created: `create.yml` and `destroy.yml`. But with the docker driver there is no need for them, since the Driver handles creation and destruction of our Molecule test instances.
+
+So we could easily leave the `molecule init` command, create the `docker-ubuntu` directory ourselves and copy the [`molecule.yml`](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/docker-ubuntu-2304/molecule.yml):
+
+```yaml
+---
+driver:
+  name: docker
+
+platforms:
+  - name: docker-ubuntu
+    image: ubuntu:23.04
+    pre_build_image: false
+
+verifier:
+  name: testinfra
+  directory: ../tests/
+  env:
+    # get rid of the DeprecationWarning messages of third-party libs,
+    # see https://docs.pytest.org/en/latest/warnings.html#deprecationwarning-and-pendingdeprecationwarning
+    PYTHONWARNINGS: "ignore:.*U.*mode is deprecated:DeprecationWarning"
+  options:
+    # show which tests where executed in test output
+    v: 1
+```
+
+Compared to the Delegated variant, we don't need to define the `dependency` keyword, but instead use the `driver` keyword to configure the Docker driver.
+
+We still need a [`converge.yml`](collections/ansible_collections/jonashackt/moleculetest/extensions/molecule/docker-ubuntu-2304/converge.yml), which triggers our role execution:
+
+```yaml
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  become: false
+  roles:
+    - role: jonashackt.moleculetest.install_python_pip
+```
+
+Now that's already everything we need to using the docker driver!
+
+Let's test our new Scenario. First let's create our Molecule Docker container:
+
+```shell
+molecule create --scenario-name docker-ubuntu
+```
+
+And then fire our role onto it:
+
+```shell
+molecule converge --scenario-name docker-ubuntu
+```
+
+Works really nice! And compared to the Delegated driver we have much lesser configuration files:
+
+```shell
+$ tree
+.
+└── molecule
+    ├── default
+    │   ├── converge.yml
+    │   ├── create.yml
+    │   ├── destroy.yml
+    │   ├── molecule.yml
+    │   ├── prepare.yml
+    │   └── requirements.yml
+    ├── docker-ubuntu
+    │   ├── converge.yml
+    │   └── molecule.yml
+```
+
+I also created another GitHub Actions workflow for our new scenario and driver.
