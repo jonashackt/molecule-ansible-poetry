@@ -8,7 +8,11 @@
   "major": {
     "automerge": false
   },
-  "fileMatch": [
-    "(^|/)pyproject\\.toml$"
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "(^|/)pyproject\\.toml$"
+      ]
+    }
   ]
 }
