@@ -1,3 +1,5 @@
+name: delegated-docker-ubuntu
+
 on: [push]
 
 jobs:

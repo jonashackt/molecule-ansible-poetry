@@ -1,5 +1,6 @@
 # molecule-ansible-poetry
-[![Build Status](https://github.com/jonashackt/molecule-ansible-poetry/workflows/molecule-test/badge.svg)](https://github.com/jonashackt/molecule-ansible-poetry/actions)
+[![delegated-docker-ubuntu](https://github.com/jonashackt/molecule-ansible-poetry/workflows/delegated-docker-ubuntu/badge.svg)](https://github.com/jonashackt/molecule-ansible-poetry/actions)
+[![docker-ubuntu](https://github.com/jonashackt/molecule-ansible-poetry/workflows/docker-ubuntu/badge.svg)](https://github.com/jonashackt/molecule-ansible-poetry/actions)
 [![License](http://img.shields.io/:license-mit-blue.svg)](https://github.com/jonashackt/molecule-ansible-poetry/blob/master/LICENSE)
 [![renovateenabled](https://img.shields.io/badge/renovate-enabled-yellow)](https://renovatebot.com)
 
