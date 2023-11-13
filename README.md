@@ -229,6 +229,8 @@ $ ansible-galaxy role init install_python_pip
 
 > The command `ansible-galaxy role init` creates a strange directory `tests` inside the new role's directory. After doing some research in [the official role docs about the structure of roles](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_reuse_roles.html#role-directory-structure) and the [official ansible-galaxy docs about the `ansible-galaxy role init` command](https://docs.ansible.com/ansible/latest/galaxy/dev_guide.html#creating-roles-for-galaxy) it became clear, that this is a non-standard folder which can be ignored. See also [this so q&a](https://stackoverflow.com/questions/70898834/which-tools-use-the-tests-directory-in-an-ansible-role-by-default), which makes it clear that the `tests` folder [was originally meant for Travis CI only](https://github.com/ansible/ansible/pull/13489).
 
+> The correct directory for `tests` should be directly in the root of the collection `collections/ansible_collections/jonashackt/moleculetest`, where also the tool `ansible-test` put's it's outputs. For example run a `ansible-test sanity` and the dir should be generated correctly (don't forget to add the `collections/ansible_collections/jonashackt/moleculetest/tests/output` to your [.gitignore](.gitignore)).
+
 
 ## Add Molecule to the collection & run first test cycle
 

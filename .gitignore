@@ -1,3 +1,6 @@
+# ansible-test outputs
+collections/ansible_collections/jonashackt/moleculetest/tests/output
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
